@@ -1,0 +1,50 @@
+
+name: Sync Nova-Proxy worker.js
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout my repository
+        uses: actions/checkout@v4
+        with:
+          path: mine
+          ref: main
+          token: ${{ secrets.SYNC_TOKEN }}
+
+      - name: Checkout upstream repository
+        uses: actions/checkout@v4
+        with:
+          repository: IRNova/Nova-Proxy
+          ref: main
+          path: upstream
+          sparse-checkout: worker.js
+          sparse-checkout-cone-mode: false
+
+      - name: Copy only worker.js
+        run: cp upstream/worker.js mine/worker.js
+
+      - name: Commit and push if changed
+        working-directory: mine
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add worker.js
+
+          if git diff --cached --quiet; then
+            echo "worker.js is already up to date."
+            exit 0
+          fi
+
+          git commit -m "Sync worker.js from IRNova/Nova-Proxy"
+          git push origin main
